@@ -16,7 +16,9 @@
             });
             const data = await response.json();
             if (data.image) {
-                document.getElementById(`image-${index}`).src = `data:image/png;base64,${data.image}`;
+                const img = document.getElementById(`image-${index}`);
+                img.src = `data:image/png;base64,${data.image}`;
+                img.classList.add('max-w-full', 'max-h-64'); // Add Tailwind CSS classes
             } else {
                 console.error('Error fetching image:', data.error);
             }
@@ -24,14 +26,14 @@
 
         async function fetchAllImages(filepath, detections) {
             console.log('Fetching ', filepath);
-            for (let i = 0; i<detections.length; i++) {
+            for (let i = 0; i < detections.length; i++) {
                 await fetchImage(filepath, detections[i], i);
             }
         }
 
         document.addEventListener('DOMContentLoaded', (event) => {
             const filepath = "{{ filepath }}";
-            const detections = {{ detections|json|safe}};
+            const detections = {{ detections|json|safe }};
             fetchAllImages(filepath, detections);
         });
     </script>
@@ -51,7 +53,7 @@
                 <tr>
                     <td class="py-2 px-4 border">{{ detection.ts }}</td>
                     <td class="py-2 px-4 border">
-                        <img id="image-{{ loop.index0 }}" alt="Loading...">
+                        <img id="image-{{ loop.index0 }}" alt="Loading..." class="max-w-full max-h-64">
                     </td>
                 </tr>
                 {% endfor %}
