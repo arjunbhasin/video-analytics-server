@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::env;
 use askama::Template;
-use std::path::PathBuf;
-use actix_files::NamedFile;
+// use std::path::PathBuf;
+// use actix_files::NamedFile;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[pyclass]
@@ -98,9 +98,9 @@ struct HourTemplate<'a> {
     filepath: &'a str,
 }
 
-async fn serve_file(path: web::Path<PathBuf>) -> impl Responder {
-    NamedFile::open(path.into_inner()).unwrap()
-}
+// async fn serve_file(path: web::Path<PathBuf>) -> impl Responder {
+//     NamedFile::open(path.into_inner()).unwrap()
+// }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -118,8 +118,6 @@ async fn main() -> std::io::Result<()> {
             .route("/", web::get().to(index))
             .route("/video/{filepath:.*}", web::get().to(hour_view))
             .route("/extract", web::post().to(extract_box))
-            .route("/static/{filename:.*}", web::get().to(serve_file))
-
     })
     .bind(("0.0.0.0", 8080))?
     .run()
