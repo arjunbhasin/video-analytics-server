@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <title>Detections</title>
+    <script>
+        async function fetchImage(filepath, detection, index) {
+            const response = await fetch('/extract', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ filepath, detection })
+            });
+            const data = await response.json();
+            if (data.image) {
+                document.getElementById(`image-${index}`).src = `data:image/png;base64,${data.image}`;
+            } else {
+                console.error('Error fetching image:', data.error);
+            }
+        }
+
+        async function fetchAllImages(filepath, detections) {
+            for (let i = 0; i<detections.length; i++) {
+                await fetchImage(filepath, detections[i], i);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const filepath = "{{ filepath }}";
+            const detections = {{ detections | json }};
+            fetchAllImages(filepath, detections);
+        });
+    </script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container mx-auto p-4">
+        <h1 class="text-2xl font-bold mb-4">Detections</h1>
+        <table class="min-w-full bg-white border">
+            <thead>
+                <tr>
+                    <th class="py-2 px-4 border">Time Index</th>
+                    <th class="py-2 px-4 border">Bounding Box</th>
+                    <th class="py-2 px-4 border">Image</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for detection in detections %}
+                <tr>
+                    <td class="py-2 px-4 border">{{ detection.ts }}</td>
+                    <td class="py-2 px-4 border">
+                        <pre>{{ detection.bb }}</pre>
+                    </td>
+                    <td class="py-2 px-4 border">
+                        <img id="image-{{ loop.index0 }}" alt="Loading...">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
