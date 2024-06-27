@@ -101,15 +101,16 @@ struct HourTemplate<'a> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let database_url = env::var("DATABASE_URL").unwrap_or("sqlite:///root/workspace/processing_results.db".to_string());
+    let database_url: String = env::var("DATABASE_URL").unwrap_or("sqlite:///root/workspace/processing_results.db".to_string());
 
     // 1hr Cron Job 
     actix_rt::spawn(async {
+        let database_url = database_url.clone();
         let mut interval = time::interval(Duration::from_secs(3600));
         
         let pool = SqlitePoolOptions::new()
         .max_connections(1)
-        .connect(&database_url.clone())
+        .connect(&database_url)
         .await
         .unwrap();
 
