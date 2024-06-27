@@ -109,7 +109,7 @@ async fn main() -> std::io::Result<()> {
         
         let pool = SqlitePoolOptions::new()
         .max_connections(1)
-        .connect(&database_url)
+        .connect(&database_url.clone())
         .await
         .unwrap();
 
