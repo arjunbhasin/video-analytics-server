@@ -23,6 +23,7 @@
         }
 
         async function fetchAllImages(filepath, detections) {
+            console.log('Fetching ', filepath);
             for (let i = 0; i<detections.length; i++) {
                 await fetchImage(filepath, detections[i], i);
             }
@@ -30,7 +31,7 @@
 
         document.addEventListener('DOMContentLoaded', (event) => {
             const filepath = "{{ filepath }}";
-            const detections = {{ detections | json }};
+            const detections = {{ detections|json|safe}};
             fetchAllImages(filepath, detections);
         });
     </script>
@@ -42,7 +43,6 @@
             <thead>
                 <tr>
                     <th class="py-2 px-4 border">Time Index</th>
-                    <th class="py-2 px-4 border">Bounding Box</th>
                     <th class="py-2 px-4 border">Image</th>
                 </tr>
             </thead>
@@ -50,9 +50,6 @@
                 {% for detection in detections %}
                 <tr>
                     <td class="py-2 px-4 border">{{ detection.ts }}</td>
-                    <td class="py-2 px-4 border">
-                        <pre>{{ detection.bb }}</pre>
-                    </td>
                     <td class="py-2 px-4 border">
                         <img id="image-{{ loop.index0 }}" alt="Loading...">
                     </td>
