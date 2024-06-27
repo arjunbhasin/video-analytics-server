@@ -5,6 +5,8 @@ use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::env;
 use askama::Template;
 use std::fs;
+use tokio::time::{self, Duration};
+use std::path::Path;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[pyclass]
@@ -99,7 +101,44 @@ struct HourTemplate<'a> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let database_url = env::var("DATABASE_URL").unwrap_or("../processing_results.db".to_string());
+    let database_url = env::var("DATABASE_URL").unwrap_or("sqlite:///root/workspace/processing_results.db".to_string());
+
+    // 1hr Cron Job 
+    actix_rt::spawn(async {
+        let mut interval = time::interval(Duration::from_secs(3600));
+        
+        let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect(&database_url)
+        .await
+        .unwrap();
+
+        loop {
+            interval.tick().await;
+            println!("Running deletion job");
+            // delete those records from processed_videos where filepath doesn't exist in videos folder
+            let records = sqlx::query!(
+                "SELECT filepath FROM processed_videos"
+            )
+            .fetch_all(pool)
+            .await
+            .unwrap();
+    
+            for record in records {
+                let filepath: String = record.filepath.unwrap_or("".to_string());
+                if !Path::new(filepath.as_str()).exists() {
+                    sqlx::query!(
+                        "DELETE FROM processed_videos WHERE filepath = ?",
+                        filepath
+                    )
+                    .execute(pool)
+                    .await
+                    .unwrap();
+                    println!("Deleted record with filepath: {}", filepath);
+                }
+            }
+        }
+    });
 
     let pool = SqlitePoolOptions::new()
         .max_connections(5)
