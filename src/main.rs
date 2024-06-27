@@ -118,10 +118,10 @@ async fn main() -> std::io::Result<()> {
             .route("/", web::get().to(index))
             .route("/{filepath:.*}", web::get().to(hour_view))
             .route("/extract", web::post().to(extract_box))
-            // .route("/static/{filename:.*}", web::get().to(serve_file))
+            .route("/static/{filename:.*}", web::get().to(serve_file))
 
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind(("0.0.0.0", 8080))?
     .run()
     .await
 }
