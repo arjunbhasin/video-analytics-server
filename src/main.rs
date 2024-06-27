@@ -120,7 +120,7 @@ async fn main() -> std::io::Result<()> {
             let records = sqlx::query!(
                 "SELECT filepath FROM processed_videos"
             )
-            .fetch_all(pool)
+            .fetch_all(&pool)
             .await
             .unwrap();
     
@@ -131,7 +131,7 @@ async fn main() -> std::io::Result<()> {
                         "DELETE FROM processed_videos WHERE filepath = ?",
                         filepath
                     )
-                    .execute(pool)
+                    .execute(&pool)
                     .await
                     .unwrap();
                     println!("Deleted record with filepath: {}", filepath);
