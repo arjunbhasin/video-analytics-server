@@ -5,6 +5,7 @@ import base64
 from typing import List, Dict
 
 def extract_box_as_b64(filepath: str, detection: Dict[str, List[int]]) -> str:
+    print(f"Extracting box from {filepath} at timestamp {detection['ts']} seconds")
     cap = cv2.VideoCapture(filepath)
 
     if not cap.isOpened():
