@@ -116,7 +116,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::new(pool.clone()))
             .route("/", web::get().to(index))
-            .route("/{filepath:.*}", web::get().to(hour_view))
+            .route("/video/{filepath:.*}", web::get().to(hour_view))
             .route("/extract", web::post().to(extract_box))
             .route("/static/{filename:.*}", web::get().to(serve_file))
 
