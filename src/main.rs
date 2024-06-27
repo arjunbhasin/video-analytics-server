@@ -132,7 +132,7 @@ fn extract_box_as_b64(filepath: &str, detection: Detection) -> PyResult<String> 
 
         let image = extract_box_as_b64
             .getattr("extract_box_as_b64")?
-            .call1((filepath, detection))?
+            .call1((filepath, detection.ts, detection.bb))?
             .extract()?;
         Ok(image)
     })

@@ -2,19 +2,15 @@ import cv2
 from PIL import Image
 import io
 import base64
-from typing import List, Dict
+from typing import List
 
-def extract_box_as_b64(filepath: str, detection: Dict[str, List[int]]) -> str:
-    print(f"Extracting box from {filepath} at timestamp {detection['ts']} seconds")
+def extract_box_as_b64(filepath: str, ts: int, bb: List[int]) -> str:
     cap = cv2.VideoCapture(filepath)
 
     if not cap.isOpened():
         raise FileNotFoundError(f"Cannot open video file: {filepath}")
 
     fps = int(cap.get(cv2.CAP_PROP_FPS))
-
-    ts = detection['ts']
-    bb = detection['bb']
 
     # Calculate the frame number
     frame_number = ts * fps
