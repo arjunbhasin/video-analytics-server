@@ -92,7 +92,7 @@ struct IndexTemplate<'a> {
 }
 
 #[derive(Template)]
-#[template(path = "test.html")]
+#[template(path = "hour.html")]
 struct HourTemplate<'a> {
     detections: &'a [Detection],
     filepath: &'a str,
