@@ -1,13 +1,31 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tokio::time::{self, Duration};
 use sqlx::{Pool, Sqlite};
 use std::{fs, io};
 use pyo3::prelude::*;
 use chrono::{NaiveDateTime, Datelike, Timelike};
+use walkdir::WalkDir;
 
 
 pub async fn add_new_records(pool: Pool<Sqlite>){
+    let db_filepaths = sqlx::query!(
+        "SELECT filepath FROM processed_videos"
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
 
+    // get all file paths in the videos folder
+    let filepaths = get_all_file_paths("/media/baracuda/xiaomi_camera_videos/60DEF4CF9416");
+    // find the file paths that are not in the database and create a stack of them
+    let mut new_filepaths = Vec::new();
+    for filepath in filepaths {
+        let filepath_str = filepath.to_str().unwrap();
+        if !db_filepaths.iter().any(|db_filepath| db_filepath.filepath.as_deref() == Some(filepath_str)) {
+            new_filepaths.push(filepath_str);
+        }
+    }
+    println!("New filepaths: {:?}", new_filepaths);
 }
 
 pub async fn remove_old_records(pool: Pool<Sqlite>) {
@@ -37,6 +55,19 @@ pub async fn remove_old_records(pool: Pool<Sqlite>) {
             }
         }
     }
+}
+
+fn get_all_file_paths(root: &str) -> Vec<PathBuf> {
+    let mut file_paths = Vec::new();
+    
+    for entry in WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if path.is_file() {
+            file_paths.push(path.to_path_buf());
+        }
+    }
+    
+    file_paths
 }
 
 #[pyfunction]
