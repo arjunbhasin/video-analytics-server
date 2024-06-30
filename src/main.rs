@@ -1,3 +1,5 @@
+mod cron_job;
+
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -5,8 +7,6 @@ use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::env;
 use askama::Template;
 use std::fs;
-use tokio::time::{self, Duration};
-use std::path::Path;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[pyclass]
@@ -102,52 +102,28 @@ struct HourTemplate<'a> {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
 
-    // 1hr Cron Job 
-    actix_rt::spawn(async {
-        let database_url: String = env::var("DATABASE_URL").unwrap_or("sqlite:///root/workspace/processing_results.db".to_string());
-        let mut interval = time::interval(Duration::from_secs(3600));
-        
-        let pool = SqlitePoolOptions::new()
-        .max_connections(1)
-        .connect(&database_url)
-        .await
-        .unwrap();
-
-        loop {
-            interval.tick().await;
-            println!("Running deletion job");
-            // delete those records from processed_videos where filepath doesn't exist in videos folder
-            let records = sqlx::query!(
-                "SELECT filepath FROM processed_videos"
-            )
-            .fetch_all(&pool)
-            .await
-            .unwrap();
-    
-            for record in records {
-                let filepath: String = record.filepath.unwrap_or("".to_string());
-                if !Path::new(filepath.as_str()).exists() {
-                    sqlx::query!(
-                        "DELETE FROM processed_videos WHERE filepath = ?",
-                        filepath
-                    )
-                    .execute(&pool)
-                    .await
-                    .unwrap();
-                    println!("Deleted record with filepath: {}", filepath);
-                }
-            }
-        }
-    });
-
-    // main servers
+    // Main server
     let database_url: String = env::var("DATABASE_URL").unwrap_or("sqlite:///root/workspace/processing_results.db".to_string());
 
     let pool = SqlitePoolOptions::new()
-        .max_connections(5)
+        .max_connections(50)
         .connect(&database_url)
         .await
         .unwrap();
+
+    let pool_add_job_clone = pool.clone();
+    let pool_remove_job_clone = pool.clone();
+
+    // Continuous add new records Cron Job
+    actix_rt::spawn(async {
+        cron_job::add_new_records(pool_add_job_clone).await;
+    });
+
+    // 1hr remove old records Cron Job 
+    actix_rt::spawn(async {
+        cron_job::remove_old_records(pool_remove_job_clone).await;
+    });
+    
 
     HttpServer::new(move || {
         App::new()
