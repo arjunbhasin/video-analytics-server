@@ -71,7 +71,10 @@ fn get_all_file_paths(root: &str) -> Vec<String> {
         let path = entry.path();
         if path.is_file() {
             if let Some(path_str) = path.to_str() {
-                file_paths.push(path_str.to_string());
+                // push only if file is a video file(mp4)
+                if path_str.ends_with(".mp4") {
+                    file_paths.push(path_str.to_string());
+                }
             }
         }
     }
