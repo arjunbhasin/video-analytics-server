@@ -1,4 +1,5 @@
 mod cron_job;
+mod models;
 
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use pyo3::prelude::*;

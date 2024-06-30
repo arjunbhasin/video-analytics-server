@@ -1,38 +1,26 @@
 use std::path::Path;
-use std::env;
 use tokio::time::{self, Duration};
 use std::fs;
 use pyo3::prelude::*;
-use chrono::{NaiveDate, Timelike};
+use chrono::NaiveDate;
 use walkdir::WalkDir;
-use sqlx::{sqlite::SqlitePoolOptions, Pool, Sqlite};
 
+use crate::models::{
+    get_filepaths_from_db,
+    delete_record_with_filepath
+};
 
 pub async fn add_new_records(){
-    let database_url: String = env::var("DATABASE_URL").unwrap_or("sqlite:///root/workspace/processing_results.db".to_string());
-
-    let pool = SqlitePoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
-        .await
-        .unwrap();
-
-    let db_filepaths = sqlx::query!(
-        "SELECT filepath FROM processed_videos"
-    )
-    .fetch_all(&pool)
-    .await
-    .unwrap();
-
-    // close the pool
-    pool.close().await;
+    
+    let db_filepaths = get_filepaths_from_db().await;
 
     // get all file paths in the videos folder
     let filepaths = get_all_file_paths("/media/baracuda/xiaomi_camera_videos/60DEF4CF9416");
+
     // find the file paths that are not in the database and create a stack of them
     let mut new_filepaths: Vec<String> = Vec::new();
     for filepath in filepaths {
-        if !db_filepaths.iter().any(|db_filepath| db_filepath.filepath.as_deref() == Some(&filepath)) {
+        if !db_filepaths.contains(&filepath) {
             new_filepaths.push(filepath);
         }
     }
@@ -57,48 +45,19 @@ pub async fn add_new_records(){
         }
         break;
     }
-
-    // open the pool again
-    // let pool = SqlitePoolOptions::new()
-    //     .max_connections(5)
-    //     .connect(&database_url)
-    //     .await
-    //     .unwrap();
-    
 }
 
 pub async fn remove_old_records() {
-    let database_url: String = env::var("DATABASE_URL").unwrap_or("sqlite:///root/workspace/processing_results.db".to_string());
-    let pool = SqlitePoolOptions::new()
-    .max_connections(5)
-    .connect(&database_url)
-    .await
-    .unwrap();
-
     let mut interval = time::interval(Duration::from_secs(3600));    
     
     loop {
         interval.tick().await;
         println!("Running deletion job");
-        // delete those records from processed_videos where filepath doesn't exist in videos folder
-        let records = sqlx::query!(
-            "SELECT filepath FROM processed_videos"
-        )
-        .fetch_all(&pool)
-        .await
-        .unwrap();
+        let db_filepaths = get_filepaths_from_db().await;
 
-        for record in records {
-            let filepath: String = record.filepath.unwrap_or("".to_string());
+        for filepath in db_filepaths {
             if !Path::new(filepath.as_str()).exists() {
-                sqlx::query!(
-                    "DELETE FROM processed_videos WHERE filepath = ?",
-                    filepath
-                )
-                .execute(&pool)
-                .await
-                .unwrap();
-                println!("Deleted record with filepath: {}", filepath);
+                delete_record_with_filepath(&filepath).await;
             }
         }
     }
