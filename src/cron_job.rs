@@ -7,7 +7,8 @@ use walkdir::WalkDir;
 
 use crate::models::{
     get_filepaths_from_db,
-    delete_record_with_filepath
+    delete_record_with_filepath,
+    add_record
 };
 
 pub async fn add_new_records(){
@@ -29,10 +30,9 @@ pub async fn add_new_records(){
         // get detection string from yolov8
         match get_person(&filepath){
             Ok(detection_from_yolo) => {
-                println!("Detection: {}", detection_from_yolo);
                 match extract_datetime_from_path(&filepath) {
                     Ok(timestamp) => {
-                        println!("Timestamp: {}", timestamp);
+                        add_record(&filepath, &timestamp, &detection_from_yolo).await;
                     }
                     Err(e) => {
                         println!("Failed to extract timestamp from path: {}", e);
@@ -43,7 +43,6 @@ pub async fn add_new_records(){
                 println!("Failed to get person from yolo: {}", e);
             }
         }
-        break;
     }
 }
 
