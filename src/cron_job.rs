@@ -25,6 +25,14 @@ pub async fn add_new_records(pool: Pool<Sqlite>){
         }
     }
     println!("New filepaths: {:?}", new_filepaths);
+
+    for filepath in new_filepaths {
+        let detection_from_yolo = get_person(&filepath).unwrap();
+        let timestamp = extract_datetime_from_path(&filepath).unwrap();
+        println!("Timestamp: {}", timestamp);
+        println!("Detection: {}", detection_from_yolo);
+        break
+    }
 }
 
 pub async fn remove_old_records(pool: Pool<Sqlite>) {

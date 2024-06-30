@@ -119,10 +119,10 @@ async fn main() -> std::io::Result<()> {
         cron_job::add_new_records(pool_add_job_clone).await;
     });
 
-    // // 1hr remove old records Cron Job 
-    // actix_rt::spawn(async {
-    //     cron_job::remove_old_records(pool_remove_job_clone).await;
-    // });
+    // 1hr remove old records Cron Job 
+    actix_rt::spawn(async {
+        cron_job::remove_old_records(pool_remove_job_clone).await;
+    });
     
 
     HttpServer::new(move || {
