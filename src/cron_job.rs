@@ -1,13 +1,22 @@
 use std::path::Path;
+use std::env;
 use tokio::time::{self, Duration};
-use sqlx::{Pool, Sqlite};
 use std::fs;
 use pyo3::prelude::*;
 use chrono::{NaiveDate, Timelike};
 use walkdir::WalkDir;
+use sqlx::{sqlite::SqlitePoolOptions, Pool, Sqlite};
 
 
-pub async fn add_new_records(pool: Pool<Sqlite>){
+pub async fn add_new_records(){
+    let database_url: String = env::var("DATABASE_URL").unwrap_or("sqlite:///root/workspace/processing_results.db".to_string());
+
+    let pool = SqlitePoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await
+        .unwrap();
+
     let db_filepaths = sqlx::query!(
         "SELECT filepath FROM processed_videos"
     )
@@ -45,10 +54,21 @@ pub async fn add_new_records(pool: Pool<Sqlite>){
         }
         break;
     }
+
+    // close the pool
+    pool.close().await;
 }
 
-pub async fn remove_old_records(pool: Pool<Sqlite>) {
+pub async fn remove_old_records() {
+    let database_url: String = env::var("DATABASE_URL").unwrap_or("sqlite:///root/workspace/processing_results.db".to_string());
+    let pool = SqlitePoolOptions::new()
+    .max_connections(5)
+    .connect(&database_url)
+    .await
+    .unwrap();
+
     let mut interval = time::interval(Duration::from_secs(3600));    
+    
     loop {
         interval.tick().await;
         println!("Running deletion job");

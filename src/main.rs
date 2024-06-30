@@ -102,29 +102,25 @@ struct HourTemplate<'a> {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
 
-    // Main server
-    let database_url: String = env::var("DATABASE_URL").unwrap_or("sqlite:///root/workspace/processing_results.db".to_string());
-
-    let pool = SqlitePoolOptions::new()
-        .max_connections(50)
-        .connect(&database_url)
-        .await
-        .unwrap();
-
-    let pool_add_job_clone = pool.clone();
-    let pool_remove_job_clone = pool.clone();
-
     // Continuous add new records Cron Job
     actix_rt::spawn(async move {
-        cron_job::add_new_records(pool_add_job_clone).await;
+        cron_job::add_new_records().await;
     });
 
     // 1hr remove old records Cron Job 
     actix_rt::spawn(async move {
-        cron_job::remove_old_records(pool_remove_job_clone).await;
+        cron_job::remove_old_records().await;
     });
     
+    // Main server
+    let database_url: String = env::var("DATABASE_URL").unwrap_or("sqlite:///root/workspace/processing_results.db".to_string());
 
+    let pool = SqlitePoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await
+        .unwrap();
+ 
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(pool.clone()))
