@@ -8,7 +8,7 @@ pub async fn get_filepaths_from_db() -> Vec<String> {
     let db_filepaths = sqlx::query!(
         "SELECT filepath FROM processed_videos"
     )
-    .fetch_all(db)
+    .fetch_all(&db)
     .await
     .unwrap();
     
