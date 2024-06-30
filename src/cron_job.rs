@@ -27,11 +27,24 @@ pub async fn add_new_records(pool: Pool<Sqlite>){
     println!("New filepaths: {:?}", new_filepaths);
 
     for filepath in new_filepaths {
-        let detection_from_yolo = get_person(&filepath).unwrap();
-        let timestamp = extract_datetime_from_path(&filepath).unwrap();
-        println!("Timestamp: {}", timestamp);
-        println!("Detection: {}", detection_from_yolo);
-        break
+        // get detection string from yolov8
+        match get_person(&filepath){
+            Ok(detection_from_yolo) => {
+                println!("Detection: {}", detection_from_yolo);
+                match extract_datetime_from_path(&filepath) {
+                    Ok(timestamp) => {
+                        println!("Timestamp: {}", timestamp);
+                    }
+                    Err(e) => {
+                        println!("Failed to extract timestamp from path: {}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                println!("Failed to get person from yolo: {}", e);
+            }
+        }
+        break;
     }
 }
 
@@ -102,6 +115,7 @@ fn get_person(filepath: &str) -> PyResult<String> {
 }
 
 fn extract_datetime_from_path(filepath: &str) -> Result<String, String> {
+    println!("Extracting date from : {}", filepath);
     // Convert the filepath to a Path
     let path = Path::new(filepath);
 
