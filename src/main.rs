@@ -115,12 +115,12 @@ async fn main() -> std::io::Result<()> {
     let pool_remove_job_clone = pool.clone();
 
     // Continuous add new records Cron Job
-    actix_rt::spawn(async {
+    actix_rt::spawn(async move {
         cron_job::add_new_records(pool_add_job_clone).await;
     });
 
     // 1hr remove old records Cron Job 
-    actix_rt::spawn(async {
+    actix_rt::spawn(async move {
         cron_job::remove_old_records(pool_remove_job_clone).await;
     });
     

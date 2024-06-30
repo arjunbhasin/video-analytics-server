@@ -1,9 +1,9 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tokio::time::{self, Duration};
 use sqlx::{Pool, Sqlite};
-use std::{fs, io};
+use std::fs;
 use pyo3::prelude::*;
-use chrono::{NaiveDateTime, Datelike, Timelike};
+use chrono::{NaiveDate, Timelike};
 use walkdir::WalkDir;
 
 
@@ -24,7 +24,6 @@ pub async fn add_new_records(pool: Pool<Sqlite>){
             new_filepaths.push(filepath);
         }
     }
-    println!("New filepaths: {:?}", new_filepaths);
 
     for filepath in new_filepaths {
         // get detection string from yolov8
@@ -115,7 +114,6 @@ fn get_person(filepath: &str) -> PyResult<String> {
 }
 
 fn extract_datetime_from_path(filepath: &str) -> Result<String, String> {
-    println!("Extracting date from : {}", filepath);
     // Convert the filepath to a Path
     let path = Path::new(filepath);
 
@@ -134,8 +132,8 @@ fn extract_datetime_from_path(filepath: &str) -> Result<String, String> {
     };
 
     // Extract date and hour from folder name
-    let dt = match NaiveDateTime::parse_from_str(&folder, "%Y%m%d%H") {
-        Ok(datetime) => datetime,
+    let dt = match NaiveDate::parse_from_str(&folder, "%Y%m%d%H") {
+        Ok(date) => date.and_hms(0, 0, 0),
         Err(e) => return Err(format!("Failed to parse date and hour from folder name: {}", e)),
     };
 
