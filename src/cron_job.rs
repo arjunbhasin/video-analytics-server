@@ -24,6 +24,9 @@ pub async fn add_new_records(){
     .await
     .unwrap();
 
+    // close the pool
+    pool.close().await;
+
     // get all file paths in the videos folder
     let filepaths = get_all_file_paths("/media/baracuda/xiaomi_camera_videos/60DEF4CF9416");
     // find the file paths that are not in the database and create a stack of them
@@ -55,8 +58,13 @@ pub async fn add_new_records(){
         break;
     }
 
-    // close the pool
-    pool.close().await;
+    // open the pool again
+    // let pool = SqlitePoolOptions::new()
+    //     .max_connections(5)
+    //     .connect(&database_url)
+    //     .await
+    //     .unwrap();
+    
 }
 
 pub async fn remove_old_records() {
@@ -151,10 +159,18 @@ fn extract_datetime_from_path(filepath: &str) -> Result<String, String> {
         None => return Err(format!("Failed to get filename from path: {}", filepath)),
     };
 
-    // Extract date and hour from folder name
-    let dt = match NaiveDate::parse_from_str(&folder, "%Y%m%d%H") {
-        Ok(date) => date.and_hms(0, 0, 0),
-        Err(e) => return Err(format!("Failed to parse date and hour from folder name: {}", e)),
+    // Extract date from folder name (first 8 characters)
+    let date_str = &folder[0..8];
+    let date = match NaiveDate::parse_from_str(date_str, "%Y%m%d") {
+        Ok(date) => date,
+        Err(e) => return Err(format!("Failed to parse date from folder name: {}", e)),
+    };
+
+    // Extract hour from folder name (next 2 characters)
+    let hour_str = &folder[8..10];
+    let hour: u32 = match hour_str.parse() {
+        Ok(hour) => hour,
+        Err(e) => return Err(format!("Failed to parse hour from folder name: {}", e)),
     };
 
     // Extract minutes from filename
@@ -164,8 +180,8 @@ fn extract_datetime_from_path(filepath: &str) -> Result<String, String> {
         Err(_) => 0,
     };
 
-    // Set minute and second to extracted minute and 0 respectively
-    let dt = dt.with_minute(minute).unwrap_or(dt).with_second(0).unwrap_or(dt);
+    // Create a NaiveDateTime with the extracted date, hour, minute, and second set to 0
+    let dt = date.and_hms(hour, minute, 0);
 
     // Return the ISO formatted datetime string
     Ok(dt.format("%Y-%m-%dT%H:%M:%S").to_string())
