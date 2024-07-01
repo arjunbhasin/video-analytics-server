@@ -13,7 +13,7 @@ const VIDEOS_FOLDER: &str = "/media/baracuda/xiaomi_camera_videos/60DEF4CF9416";
 
 // cron job to add new records to the database
 pub async fn add_new_records(){  
-    let watch_dir = PathBuf::from("VIDEOS_FOLDER");
+    let watch_dir = PathBuf::from(VIDEOS_FOLDER);
     // Create a channel to receive events.
     let (tx, rx) = channel();
     // Automatically select the best implementation for the platform.
