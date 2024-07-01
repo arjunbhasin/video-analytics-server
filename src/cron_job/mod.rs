@@ -2,7 +2,7 @@ pub mod deletion_job;
 mod yolo;
 
 use std::path::{Path, PathBuf};
-use std::thread;
+use std::fs;
 use walkdir::WalkDir;
 use tokio::time::{self, Duration};
 
@@ -68,7 +68,7 @@ pub async fn add_new_records(){
             handle_event(event, Arc::clone(&new_filepaths_clone), Arc::clone(&notify_clone));
         }
     });
-    
+
     loop {
         // Wait for notification that there are new file paths to process
         notify.notified().await;
@@ -82,7 +82,17 @@ pub async fn add_new_records(){
             }
         } {
             println!("Unprocessed file paths: {:?}", new_filepaths.lock().unwrap().len());
-            process_filepath(&filepath).await;
+            match process_filepath(&filepath).await {
+                Ok(_) => {
+                    println!("File processed successfully: {}", filepath);
+                }
+                Err(_) => {
+                    println!("Failed to process file: {}", filepath);
+                    // Add the filepath back to the stack if it failed to process
+                    let mut new_filepaths = new_filepaths.lock().unwrap();
+                    new_filepaths.push(filepath);
+                }
+            }
             time::sleep(Duration::from_millis(500)).await;
         }
         
@@ -112,7 +122,27 @@ fn handle_event(
     }
 }
 
-async fn process_filepath(filepath: &str) {
+// Check if a file is stable by checking its size at regular intervals
+fn is_file_stable(filepath: &str, duration: Duration, checks: u32) -> bool {
+    let mut previous_size = None;
+    for _ in 0..checks {
+        let metadata = fs::metadata(filepath);
+        let current_size = metadata.map(|m| m.len()).ok();
+        if current_size == previous_size {
+            return true;
+        }
+        previous_size = current_size;
+        std::thread::sleep(duration);
+    }
+    false
+}
+
+async fn process_filepath(filepath: &str) -> Result<(),()> {
+    if !is_file_stable(filepath, Duration::from_secs(2), 3) {
+        println!("File is not stable yet: {}", filepath);
+        return Err(());
+    }
+
     match get_person(&filepath){
         Ok(detection_from_yolo) => {
             match extract_datetime_from_path(&filepath) {
@@ -126,14 +156,17 @@ async fn process_filepath(filepath: &str) {
                     };
                     
                     add_record(record).await;
+                    Ok(())
                 }
                 Err(e) => {
                     println!("Failed to extract timestamp from path: {}", e);
+                    Err(())
                 }
             }
         }
         Err(e) => {
             println!("Failed to get person from yolo: {}", e);
+            Err(())
         }
     }
 }
