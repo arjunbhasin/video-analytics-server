@@ -11,8 +11,7 @@ use crate::models::{
     add_record
 };
 
-pub async fn add_new_records(){
-    
+pub async fn add_new_records(){  
     let db_filepaths = get_filepaths_from_db().await;
 
     // get all file paths in the videos folder

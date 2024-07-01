@@ -4,8 +4,7 @@ mod models;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
-use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
-use std::env;
+use sqlx::FromRow;
 use askama::Template;
 use std::fs;
 
@@ -16,8 +15,8 @@ struct Detection {
     bb: Vec<i32>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct VideoRecord {
+#[derive(Serialize, Deserialize, Debug, FromRow)]
+struct VideoRecordHTML {
     filepath: String,
     timestamp: String,
     date: String,
@@ -30,25 +29,20 @@ struct ExtractRequest {
     detection: Detection,
 }
 
-async fn index(pool: web::Data<SqlitePool>) -> impl Responder {
-    let records = sqlx::query!(
-        "SELECT filepath, timestamp, detections FROM processed_videos"
-    )
-    .fetch_all(pool.get_ref())
-    .await
-    .unwrap();
+async fn index() -> impl Responder {
+    let records = models::get_all_records().await;
 
     let mut filtered_videos = Vec::new();
     for record in records {
-        let filepath: String = record.filepath.unwrap_or("".to_string()).replace("/", "-");
-        let timestamp: String = record.timestamp.unwrap_or("".to_string());
-        let detections: Vec<Detection> = serde_json::from_str(&record.detections.unwrap()).unwrap();
+        let filepath: String = record.filepath.replace("/", "-");
+        let timestamp: String = record.timestamp;
+        let detections: Vec<Detection> = serde_json::from_str(&record.detections).unwrap();
         
         let date: String = timestamp.split("T").collect::<Vec<&str>>()[0].to_string();
         let hour: String = timestamp.clone().split("T").collect::<Vec<&str>>()[1].split(":").collect::<Vec<&str>>()[0].to_string();
 
         if detections.len() > 0 {
-            filtered_videos.push(VideoRecord {
+            filtered_videos.push(VideoRecordHTML {
                 filepath,
                 timestamp,
                 date,
@@ -64,25 +58,20 @@ async fn index(pool: web::Data<SqlitePool>) -> impl Responder {
     HttpResponse::Ok().body(template.render().unwrap())
 }
 
-async fn hour_view(filepath: web::Path<String>, pool: web::Data<SqlitePool>) -> impl Responder {
+async fn hour_view(filepath: web::Path<String>) -> impl Responder {
     let filepath = filepath.into_inner().replace("-", "/");
-    let record = sqlx::query!(
-        "SELECT filepath, timestamp, detections FROM processed_videos WHERE filepath = ?",
-        filepath
-    )
-    .fetch_one(pool.get_ref())
-    .await;
+    let record = models::get_record_with_filepath(&filepath).await;
 
     match record {
-        Ok(record) => {
-            let detections: Vec<Detection> = serde_json::from_str(&record.detections.unwrap()).unwrap();
+        Some(record) => {
+            let detections: Vec<Detection> = serde_json::from_str(&record.detections).unwrap();
             let template = HourTemplate {
                 detections: &detections,
-                filepath: &record.filepath.unwrap(),
+                filepath: &record.filepath,
             };
             HttpResponse::Ok().body(template.render().unwrap())
         }
-        Err(_) => HttpResponse::NotFound().body("No detections found for this video."),
+        None => HttpResponse::NotFound().body("No detections found for this filepath."),
     }
 }
 
@@ -90,7 +79,7 @@ async fn hour_view(filepath: web::Path<String>, pool: web::Data<SqlitePool>) -> 
 #[derive(Template)]
 #[template(path = "index.html")]
 struct IndexTemplate<'a> {
-    videos: &'a [VideoRecord],
+    videos: &'a [VideoRecordHTML],
 }
 
 #[derive(Template)]
@@ -113,18 +102,8 @@ async fn main() -> std::io::Result<()> {
         cron_job::remove_old_records().await;
     });
     
-    // Main server
-    let database_url: String = env::var("DATABASE_URL").unwrap_or("sqlite:///root/workspace/processing_results.db".to_string());
-
-    let pool = SqlitePoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
-        .await
-        .unwrap();
- 
     HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(pool.clone()))
             .route("/", web::get().to(index))
             .route("/video/{filepath:.*}", web::get().to(hour_view))
             .route("/extract", web::post().to(extract_box))
