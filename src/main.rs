@@ -102,7 +102,7 @@ async fn main() -> std::io::Result<()> {
 
     // 1hr remove old records Cron Job 
     actix_rt::spawn(async move {
-        cron_job::remove_old_records().await;
+        cron_job::deletion_job::remove_old_records().await;
     });
     
     HttpServer::new(move || {
