@@ -8,7 +8,9 @@ use tokio::time::{self, Duration};
 
 use chrono::NaiveDate;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher, Event, EventKind, Config};
-use std::sync::{Arc, Mutex, mpsc::channel};
+use std::sync::{Arc, Mutex};
+use tokio::sync::mpsc;
+use tokio::sync::Notify;
 use crate::models::*;
 use yolo::get_person;
 
@@ -18,7 +20,7 @@ const VIDEOS_FOLDER: &str = "/media/baracuda/xiaomi_camera_videos/60DEF4CF9416";
 pub async fn add_new_records(){  
     let watch_dir = PathBuf::from(VIDEOS_FOLDER);
     let new_filepaths: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
-    let notify = Arc::new(tokio::sync::Notify::new());
+    let notify = Arc::new(Notify::new());
 
     // Get existing file paths from the database
     let db_filepaths = get_filepaths_from_db().await;
@@ -39,11 +41,19 @@ pub async fn add_new_records(){
     notify.notify_one();
 
     // Create a channel to receive events.
-    let (tx, rx) = channel();
+    let (tx, mut rx) = mpsc::channel(100);
 
     // Automatically select the best implementation for the platform.
-    let mut watcher: RecommendedWatcher = Watcher::new(tx, Config::default().with_poll_interval(Duration::from_secs(30))).unwrap();
-    
+    let mut watcher = RecommendedWatcher::new(
+        move |res| {
+            if let Ok(event) = res {
+                tx.blocking_send(event).unwrap();
+            }
+        },
+        Config::default().with_poll_interval(Duration::from_secs(30)),
+    )
+    .unwrap();
+
     // Add a path to be watched. All files and directories at that path and
     // below will be monitored for changes.
     watcher.watch(&watch_dir, RecursiveMode::Recursive).unwrap();
@@ -52,19 +62,13 @@ pub async fn add_new_records(){
    let new_filepaths_clone = Arc::clone(&new_filepaths);
    let notify_clone = Arc::clone(&notify);
 
-    // Spawn a new thread to handle new file events.
-    thread::spawn(move || {
-        loop {
-            match rx.recv() {
-                Ok(event) => match event {
-                    Ok(event) => handle_event(event, Arc::clone(&new_filepaths_clone), Arc::clone(&notify_clone)),
-                    Err(e) => println!("watch error: {:?}", e),
-                },
-                Err(e) => println!("watch error: {:?}", e),
-            }
+    // Spawn a new task to handle new file events.
+    tokio::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            handle_event(event, Arc::clone(&new_filepaths_clone), Arc::clone(&notify_clone));
         }
     });
-
+    
     loop {
         // Wait for notification that there are new file paths to process
         notify.notified().await;
@@ -78,7 +82,6 @@ pub async fn add_new_records(){
             }
         } {
             println!("Unprocessed file paths: {:?}", new_filepaths.lock().unwrap().len());
-            println!("Processing file: {}", filepath);
             process_filepath(&filepath).await;
             time::sleep(Duration::from_millis(500)).await;
         }
@@ -89,7 +92,11 @@ pub async fn add_new_records(){
 }
 
 
-fn handle_event(event: Event, new_filepaths: Arc<Mutex<Vec<String>>>, notify: Arc<tokio::sync::Notify>) {
+fn handle_event(
+    event: Event,
+    new_filepaths: Arc<Mutex<Vec<String>>>,
+    notify: Arc<Notify>,
+) {
     match event.kind {
         EventKind::Create(_) => {
             for path in event.paths {
@@ -100,7 +107,7 @@ fn handle_event(event: Event, new_filepaths: Arc<Mutex<Vec<String>>>, notify: Ar
                     notify.notify_one();
                 }
             }
-        },
+        }
         _ => (),
     }
 }
@@ -148,8 +155,6 @@ fn get_all_file_paths(root: &str) -> Vec<String> {
     
     file_paths
 }
-
-
 
 fn extract_datetime_from_path(filepath: &str) -> Result<String, String> {
     // Convert the filepath to a Path
