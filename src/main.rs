@@ -20,7 +20,8 @@ struct VideoRecordHTML {
     filepath: String,
     timestamp: String,
     date: String,
-    hour: String
+    hour: String,
+    minute: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -40,13 +41,15 @@ async fn index() -> impl Responder {
         
         let date: String = timestamp.split("T").collect::<Vec<&str>>()[0].to_string();
         let hour: String = timestamp.clone().split("T").collect::<Vec<&str>>()[1].split(":").collect::<Vec<&str>>()[0].to_string();
+        let minute: String = timestamp.clone().split("T").collect::<Vec<&str>>()[1].split(":").collect::<Vec<&str>>()[1].to_string();
 
         if detections.len() > 0 {
             filtered_videos.push(VideoRecordHTML {
                 filepath,
                 timestamp,
                 date,
-                hour
+                hour,
+                minute
             });
         }
     }

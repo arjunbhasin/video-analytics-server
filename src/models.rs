@@ -49,7 +49,15 @@ pub async fn get_non_empty_records() -> Vec<DBRecord> {
 
 pub async fn get_filepaths_from_db() -> Vec<String> {
     let database_url: String = get_db_url();
-    let db = SqlitePool::connect(&database_url).await.unwrap();
+    let connection_result = SqlitePool::connect(&database_url).await;
+    
+    let db = match connection_result {
+        Ok(db) => db,
+        Err(e) => {
+            println!("Failed to connect to the database: {}", e);
+            return Vec::new();
+        }
+    };
 
     #[derive(Debug, FromRow)]
     struct DBFilepath {

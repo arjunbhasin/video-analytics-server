@@ -15,6 +15,7 @@
                     <th class="py-2 px-4 border">S.No.</th>
                     <th class="py-2 px-4 border">Date (YYYY-MM-DD)</th>
                     <th class="py-2 px-4 border">Hour (0-24)</th>
+                    <th class="py-2 px-4 border">Min (0-60)</th>
                 </tr>
             </thead>
             <tbody>
@@ -22,8 +23,9 @@
                 <tr>
                     <td class="py-2 px-4 border">{{ loop.index }}</td>
                     <td class="py-2 px-4 border">{{ video.date }}</td>
+                    <td class="py-2 px-4 border">{{ video.hour }}</td>
                     <td class="py-2 px-4 border">
-                        <a href="/video/{{ video.filepath }}">{{ video.hour }}</a>
+                        <a href="/video/{{ video.filepath }}">{{ video.minute }}</a>
                     </td>
                 </tr>
                 {% endfor %}
