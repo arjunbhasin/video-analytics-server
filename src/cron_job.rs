@@ -37,11 +37,10 @@ pub async fn add_new_records(){
         }
     }
 
-    println!("Unprocessed files count: {:?}", new_filepaths.lock().unwrap().len());
 
     // Clone the Arc for the new thread
     let new_filepaths_clone = Arc::clone(&new_filepaths);
-    
+
     // Spawn a new thread to handle new file events.
     thread::spawn(move || {
         loop {
@@ -57,6 +56,7 @@ pub async fn add_new_records(){
 
     loop {
         while new_filepaths.lock().unwrap().len() > 0 {
+            println!("Unprocessed files count: {:?}", new_filepaths.lock().unwrap().len());
             // get the top of the stack
             let filepath = new_filepaths.lock().unwrap().pop().unwrap();
             process_filepath(&filepath).await;
