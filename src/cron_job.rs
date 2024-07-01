@@ -45,6 +45,8 @@ pub async fn add_new_records(){
                 println!("Failed to get person from yolo: {}", e);
             }
         }
+        // sleep for 0.5 second to avoid overloading the system
+        time::sleep(Duration::from_millis(500)).await;
     }
 }
 

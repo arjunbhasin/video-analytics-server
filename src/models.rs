@@ -24,8 +24,8 @@ pub async fn get_all_records() -> Vec<DBRecord> {
     .await
     .unwrap();
     
-    // close the db connection
-    db.close().await;
+    // // close the db connection
+    // db.close().await;
 
     db_records
 }
@@ -72,7 +72,7 @@ pub async fn get_filepaths_from_db() -> Vec<String> {
     .unwrap();
     
     // close the db connection
-    db.close().await;
+    // db.close().await;
 
     db_filepaths.iter().map(|x| x.filepath.clone()).collect()
 }
@@ -123,7 +123,7 @@ pub async fn add_record(record: DBRecord) {
         
     }
     // close the db connection
-    db.close().await;
+    // db.close().await;
 }
 
 pub async fn delete_record_with_filepath(filepath: &str) {
@@ -147,5 +147,5 @@ pub async fn delete_record_with_filepath(filepath: &str) {
         }
     }
     // close the db connection
-    db.close().await;
+    // db.close().await;
 }
