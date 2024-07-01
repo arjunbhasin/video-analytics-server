@@ -4,12 +4,7 @@ use std::fs;
 use pyo3::prelude::*;
 use chrono::NaiveDate;
 use walkdir::WalkDir;
-
-use crate::models::{
-    get_filepaths_from_db,
-    delete_record_with_filepath,
-    add_record
-};
+use crate::models::*;
 
 pub async fn add_new_records(){  
     let db_filepaths = get_filepaths_from_db().await;
@@ -31,7 +26,15 @@ pub async fn add_new_records(){
             Ok(detection_from_yolo) => {
                 match extract_datetime_from_path(&filepath) {
                     Ok(timestamp) => {
-                        add_record(&filepath, &timestamp, &detection_from_yolo).await;
+
+                        // create a new record and add it to the database
+                        let record = DBRecord{
+                            filepath: filepath.clone(),
+                            timestamp: timestamp.clone(),
+                            detections: detection_from_yolo.clone()
+                        };
+                        
+                        add_record(record).await;
                     }
                     Err(e) => {
                         println!("Failed to extract timestamp from path: {}", e);
@@ -138,7 +141,7 @@ fn extract_datetime_from_path(filepath: &str) -> Result<String, String> {
     };
 
     // Create a NaiveDateTime with the extracted date, hour, minute, and second set to 0
-    let dt = date.and_hms(hour, minute, 0);
+    let dt = date.and_hms_opt(hour, minute, 0).unwrap();
 
     // Return the ISO formatted datetime string
     Ok(dt.format("%Y-%m-%dT%H:%M:%S").to_string())

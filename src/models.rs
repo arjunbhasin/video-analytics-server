@@ -1,7 +1,7 @@
 use std::env;
 use sqlx::{SqlitePool, FromRow};
 
-#[derive(Debug, FromRow)]
+#[derive(Debug, FromRow, Clone)]
 pub struct DBRecord {
     pub filepath: String,
     pub timestamp: String,
@@ -16,8 +16,9 @@ pub async fn get_all_records() -> Vec<DBRecord> {
     let database_url: String = get_db_url();
     let db = SqlitePool::connect(&database_url).await.unwrap();
 
+    // get all records from the database sorted by timestamp(latest first)
     let db_records = sqlx::query_as::<_,DBRecord>(
-        "SELECT * FROM processed_videos"
+        "SELECT * FROM processed_videos ORDER BY timestamp DESC"
     )
     .fetch_all(&db)
     .await
@@ -89,30 +90,24 @@ pub async fn get_record_with_filepath(filepath: &str) -> Option<DBRecord> {
         }
     }
 }
-pub async fn add_record(filepath: &str, timestamp: &str, detections: &str) {
+pub async fn add_record(record: DBRecord) {
     let database_url: String = get_db_url();
     let db = SqlitePool::connect(&database_url).await.unwrap();
-
-    let record = DBRecord {
-        filepath: filepath.to_string(),
-        timestamp: timestamp.to_string(),
-        detections: detections.to_string(),
-    };
     
     // insert the record into the database
     let insertion_result = sqlx::query(
         "INSERT INTO processed_videos (filepath, timestamp, detections) VALUES (?, ?, ?)"
     )
-    .bind(record.filepath)
-    .bind(record.timestamp)
-    .bind(record.detections)
+    .bind(&record.filepath)
+    .bind(&record.timestamp)
+    .bind(&record.detections)
     .execute(&db)
     .await
     ;
 
     match insertion_result {
         Ok(_) => {
-            println!("Added record with filepath: {}", filepath);
+            println!("Inserted record with filepath: {}", record.filepath);
         },
         Err(e) => {
             println!("Failed to insert record: {}", e);
@@ -124,7 +119,7 @@ pub async fn add_record(filepath: &str, timestamp: &str, detections: &str) {
 }
 
 pub async fn delete_record_with_filepath(filepath: &str) {
-    let database_url: String = env::var("DATABASE_URL").unwrap_or("sqlite:///root/workspace/processing_results.db".to_string());
+    let database_url: String = get_db_url();
     let db = SqlitePool::connect(&database_url).await.unwrap();
 
     let deletion_result = sqlx::query(
