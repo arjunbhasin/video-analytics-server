@@ -37,6 +37,8 @@ pub async fn add_new_records(){
         }
     }
 
+    println!("Unprocessed files count: {:?}", new_filepaths.len());
+
     // Spawn a new thread to handle new file events.
     thread::spawn(move || {
         loop {
@@ -53,7 +55,6 @@ pub async fn add_new_records(){
     // Keep the main thread alive.
     loop {
         time::sleep(Duration::from_millis(500)).await;
-        thread::park();
     }
 
     // for filepath in new_filepaths {
