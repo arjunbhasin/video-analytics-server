@@ -1,55 +1,93 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::thread;
+use walkdir::WalkDir;
 use tokio::time::{self, Duration};
 use std::fs;
 use pyo3::prelude::*;
 use chrono::NaiveDate;
-use walkdir::WalkDir;
+use notify::{RecommendedWatcher, RecursiveMode, Watcher, Event, EventKind, Config};
+use std::sync::mpsc::channel;
 use crate::models::*;
 
-pub async fn add_new_records(){  
-    let db_filepaths = get_filepaths_from_db().await;
+const VIDEOS_FOLDER: &str = "/media/baracuda/xiaomi_camera_videos/60DEF4CF9416";
 
+// cron job to add new records to the database
+pub async fn add_new_records(){  
+    let watch_dir = PathBuf::from("VIDEOS_FOLDER");
+    // Create a channel to receive events.
+    let (tx, rx) = channel();
+    // Automatically select the best implementation for the platform.
+    let mut watcher: RecommendedWatcher = Watcher::new(tx, Config::default().with_poll_interval(Duration::from_secs(30))).unwrap();
+    
+    // Add a path to be watched. All files and directories at that path and
+    // below will be monitored for changes.
+    watcher.watch(&watch_dir, RecursiveMode::Recursive).unwrap();
+
+    let mut new_filepaths: Vec<String> = Vec::new();
+
+    // get existing file paths from the database
+    let db_filepaths = get_filepaths_from_db().await;
     // get all file paths in the videos folder
-    let filepaths = get_all_file_paths("/media/baracuda/xiaomi_camera_videos/60DEF4CF9416");
+    let filepaths = get_all_file_paths(VIDEOS_FOLDER);
 
     // find the file paths that are not in the database and create a stack of them
-    let mut new_filepaths: Vec<String> = Vec::new();
     for filepath in filepaths {
         if !db_filepaths.contains(&filepath) {
             new_filepaths.push(filepath);
         }
     }
 
-    for filepath in new_filepaths {
-        // get detection string from yolov8
-        match get_person(&filepath){
-            Ok(detection_from_yolo) => {
-                match extract_datetime_from_path(&filepath) {
-                    Ok(timestamp) => {
-
-                        // create a new record and add it to the database
-                        let record = DBRecord{
-                            filepath: filepath.clone(),
-                            timestamp: timestamp.clone(),
-                            detections: detection_from_yolo.clone()
-                        };
-                        
-                        add_record(record).await;
-                    }
-                    Err(e) => {
-                        println!("Failed to extract timestamp from path: {}", e);
-                    }
-                }
-            }
-            Err(e) => {
-                println!("Failed to get person from yolo: {}", e);
+    // Spawn a new thread to handle new file events.
+    thread::spawn(move || {
+        loop {
+            match rx.recv() {
+                Ok(event) => match event {
+                    Ok(event) => handle_event(event),
+                    Err(e) => println!("watch error: {:?}", e),
+                },
+                Err(e) => println!("watch error: {:?}", e),
             }
         }
-        // sleep for 0.5 second to avoid overloading the system
+    });
+
+    // Keep the main thread alive.
+    loop {
         time::sleep(Duration::from_millis(500)).await;
+        thread::park();
     }
+
+    // for filepath in new_filepaths {
+    //     // get detection string from yolov8
+    //     match get_person(&filepath){
+    //             Ok(detection_from_yolo) => {
+    //                 match extract_datetime_from_path(&filepath) {
+    //                     Ok(timestamp) => {
+
+    //                         // create a new record and add it to the database
+    //                         let record = DBRecord{
+    //                             filepath: filepath.clone(),
+    //                             timestamp: timestamp.clone(),
+    //                             detections: detection_from_yolo.clone()
+    //                         };
+                            
+    //                         add_record(record).await;
+    //                     }
+    //                     Err(e) => {
+    //                         println!("Failed to extract timestamp from path: {}", e);
+    //                     }
+    //                 }
+    //             }
+    //             Err(e) => {
+    //                 println!("Failed to get person from yolo: {}", e);
+    //             }
+    //         }
+    //     // sleep for 0.5 second to avoid overloading the system
+    //     time::sleep(Duration::from_millis(500)).await;
+    // }
+
 }
 
+// cron job to remove old records from the database
 pub async fn remove_old_records() {
     let mut interval = time::interval(Duration::from_secs(3600));    
     
@@ -63,6 +101,21 @@ pub async fn remove_old_records() {
                 delete_record_with_filepath(&filepath).await;
             }
         }
+    }
+}
+
+/* Helper functions */
+
+fn handle_event(event: Event) {
+    match event.kind {
+        EventKind::Create(_) => {
+            for path in event.paths {
+                if path.extension().and_then(|ext| ext.to_str()) == Some("mp4") {
+                    println!("New file created: {:?}", path);
+                }
+            }
+        },
+        _ => (),
     }
 }
 
