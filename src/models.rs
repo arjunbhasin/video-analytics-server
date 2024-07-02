@@ -115,7 +115,7 @@ pub async fn add_record(record: DBRecord) {
 
     match insertion_result {
         Ok(_) => {
-            println!("Inserted record with filepath: {}", record.filepath);
+            // println!("Inserted record with filepath: {}", record.filepath);
         },
         Err(e) => {
             println!("Failed to insert record: {}", e);

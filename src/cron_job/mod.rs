@@ -90,8 +90,6 @@ pub async fn add_new_records(){
                     new_filepaths.push(filepath);
                 }
             }
-            // Wait for notification that there are new file paths to process
-            notify.notified().await;
             // Sleep for a short duration to avoid processing files too quickly
             time::sleep(Duration::from_millis(500)).await;
         }
