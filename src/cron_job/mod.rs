@@ -70,9 +70,6 @@ pub async fn add_new_records(){
     });
 
     loop {
-        // Wait for notification that there are new file paths to process
-        notify.notified().await;
-
         while let Some(filepath) = {
             let mut new_filepaths = new_filepaths.lock().unwrap();
             if !new_filepaths.is_empty() {
@@ -93,6 +90,9 @@ pub async fn add_new_records(){
                     new_filepaths.push(filepath);
                 }
             }
+            // Wait for notification that there are new file paths to process
+            notify.notified().await;
+            // Sleep for a short duration to avoid processing files too quickly
             time::sleep(Duration::from_millis(500)).await;
         }
         
@@ -110,7 +110,8 @@ fn handle_event(
     match event.kind {
         EventKind::Create(_) => {
             for path in event.paths {
-                if path.extension().and_then(|ext| ext.to_str()) == Some("mp4") {
+                // file should end with .mp4 and not start with a dot
+                if path.is_file() && path.extension().map_or(false, |e| e == "mp4") && !path.file_name().map_or(false, |f| f.to_str().map_or(false, |f| f.starts_with('.'))) {
                     let mut new_filepaths = new_filepaths.lock().unwrap();
                     new_filepaths.push(path.to_string_lossy().to_string());
                     println!("New file created and added to vector: {:?}", path);
