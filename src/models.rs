@@ -9,7 +9,7 @@ pub struct DBRecord {
 }
 
 fn get_db_url() -> String {
-    env::var("DATABASE_URL").unwrap_or("sqlite:///mnt/samba_share/xiaomi_camera_videos/processing_results.db".to_string())
+    env::var("DATABASE_URL").unwrap_or("sqlite:///root/workspace/processing_results.db".to_string())
 }
 
 pub async fn get_all_records() -> Vec<DBRecord> {
@@ -30,22 +30,22 @@ pub async fn get_all_records() -> Vec<DBRecord> {
     db_records
 }
 
-pub async fn get_non_empty_records() -> Vec<DBRecord> {
-    let database_url: String = get_db_url();
-    let db = SqlitePool::connect(&database_url).await.unwrap();
+// pub async fn get_non_empty_records() -> Vec<DBRecord> {
+//     let database_url: String = get_db_url();
+//     let db = SqlitePool::connect(&database_url).await.unwrap();
 
-    let db_records = sqlx::query_as::<_,DBRecord>(
-        "SELECT * FROM processed_videos WHERE detections IS NOT []"
-    )
-    .fetch_all(&db)
-    .await
-    .unwrap();
+//     let db_records = sqlx::query_as::<_,DBRecord>(
+//         "SELECT * FROM processed_videos WHERE detections IS NOT []"
+//     )
+//     .fetch_all(&db)
+//     .await
+//     .unwrap();
     
-    // close the db connection
-    db.close().await;
+//     // close the db connection
+//     db.close().await;
 
-    db_records
-}
+//     db_records
+// }
 
 pub async fn get_filepaths_from_db() -> Vec<String> {
     let database_url: String = get_db_url();
