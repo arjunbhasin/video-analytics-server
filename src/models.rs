@@ -9,7 +9,7 @@ pub struct DBRecord {
 }
 
 fn get_db_url() -> String {
-    env::var("DATABASE_URL").unwrap_or("sqlite:///root/workspace/processing_results.db".to_string())
+    env::var("DATABASE_URL").unwrap_or("sqlite:///mnt/samba_share/xiaomi_camera_videos/processing_results.db".to_string())
 }
 
 pub async fn get_all_records() -> Vec<DBRecord> {
