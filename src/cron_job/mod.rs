@@ -14,7 +14,7 @@ use tokio::sync::Notify;
 use crate::models::*;
 use yolo::get_person;
 
-const VIDEOS_FOLDER: &str = "/mnt/samba_share/xiaomi_camera_videos/60DEF4CF9416";
+const VIDEOS_FOLDER: &str = "/media/baracuda/xiaomi_camera_videos/60DEF4CF9416";
 
 // cron job to add new records to the database
 pub async fn add_new_records(){  
