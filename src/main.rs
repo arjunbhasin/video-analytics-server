@@ -13,8 +13,8 @@ use sqlx::FromRow;
 use askama::Template;
 use axum::http::StatusCode;
 use serde_json::json;
-use ngrok::prelude::*;
-use ngrok::config::*;
+// use ngrok::prelude::*;
+// use ngrok::config::*;
 use std::error::Error;
 use std::{fs, env};
 
@@ -148,8 +148,8 @@ async fn extract_box(Json(request): Json<ExtractRequest>) -> impl IntoResponse {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>>{
-    let allowed_email = env::var("ALLOWED_EMAIL").expect("ALLOWED_EMAIL must be set");
-    let ngrok_domain = env::var("NGROK_DOMAIN").expect("NGROK_DOMAIN must be set");
+    // let allowed_email = env::var("ALLOWED_EMAIL").expect("ALLOWED_EMAIL must be set");
+    // let ngrok_domain = env::var("NGROK_DOMAIN").expect("NGROK_DOMAIN must be set");
 
     // Continuous add new records Cron Job
     tokio::spawn(async {
@@ -166,19 +166,24 @@ async fn main() -> Result<(), Box<dyn Error>>{
         .route("/video/:filepath", get(hour_view))
         .route("/extract", post(extract_box));
 
-    let listener = ngrok::Session::builder()
-        .authtoken_from_env()
-        .connect()
-        .await?
-        .http_endpoint()
-        .oauth(OauthOptions::new("google").allow_email(allowed_email))
-        .domain(ngrok_domain)
-        .listen()
-        .await?;
+    // let listener = ngrok::Session::builder()
+    //     .authtoken_from_env()
+    //     .connect()
+    //     .await?
+    //     .http_endpoint()
+    //     .oauth(OauthOptions::new("google").allow_email(allowed_email))
+    //     .domain(ngrok_domain)
+    //     .listen()
+    //     .await?;
 
-    axum::Server::builder(listener)
-        .serve(app.into_make_service())
-        .await?;
+    // axum::Server::builder(listener)
+    //     .serve(app.into_make_service())
+    //     .await?;
+
+    axum::Server::bind(&"0.0.0.0:8080".parse().unwrap())
+    .serve(app.into_make_service())
+    .await
+    .unwrap();
 
     Ok(())
 }
